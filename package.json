@@ -1,0 +1,22 @@
+{
+  "name": "ch_sim",
+  "version": "1.0.0",
+  "description": "A Node.js program that detects Chinese characters with **left-right (vertical axis) symmetry** using visual analysis with canvas rendering.",
+  "main": "main.js",
+  "devDependencies": {
+    "prettier": "^3.8.3"
+  },
+  "scripts": {
+    "start": "node main.js common",
+    "test:common": "node main.js common",
+    "test:extended": "node main.js extended",
+    "test:all": "node main.js all"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "canvas": "^3.2.3"
+  }
+}
