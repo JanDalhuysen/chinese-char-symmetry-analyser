@@ -323,6 +323,172 @@ function getExtendedChineseCharacters(limit = 2000) {
   return chars;
 }
 
+// Chinese Word Validator
+// Checks consecutive characters against a word list to find valid words
+class ChineseWordValidator {
+  constructor(wordList = []) {
+    this.wordList = wordList;
+    this.wordSet = new Set(wordList);
+  }
+
+  // Load word list from JSON file
+  static loadFromFile(filename) {
+    try {
+      const data = fs.readFileSync(filename, "utf8");
+      const json = JSON.parse(data);
+      const words = json.words || [];
+      console.log(`Loaded ${words.length} words from ${filename}`);
+      return new ChineseWordValidator(words);
+    } catch (error) {
+      console.error(`Error loading word list: ${error.message}`);
+      return new ChineseWordValidator([]);
+    }
+  }
+
+  // Check if a string is a valid word
+  isValidWord(word) {
+    return this.wordSet.has(word);
+  }
+
+  // Find all valid words in consecutive character pairs
+  findValidWords(characters) {
+    console.log(`\nChecking ${characters.length} characters for valid words...`);
+
+    const results = {
+      validTwoCharWords: [],
+      validMultiCharWords: [],
+      totalValidWords: 0,
+      coverage: 0,
+    };
+
+    // Check all possible consecutive 2-character combinations
+    const twoCharWords = new Set();
+    for (let i = 0; i < characters.length - 1; i++) {
+      const word = characters[i] + characters[i + 1];
+      if (this.isValidWord(word)) {
+        twoCharWords.add(word);
+      }
+    }
+
+    // Check all possible consecutive 3-character combinations
+    const threeCharWords = new Set();
+    for (let i = 0; i < characters.length - 2; i++) {
+      const word = characters[i] + characters[i + 1] + characters[i + 2];
+      if (this.isValidWord(word)) {
+        threeCharWords.add(word);
+      }
+    }
+
+    // Check all possible consecutive 4-character combinations
+    const fourCharWords = new Set();
+    for (let i = 0; i < characters.length - 3; i++) {
+      const word = characters[i] + characters[i + 1] + characters[i + 2] + characters[i + 3];
+      if (this.isValidWord(word)) {
+        fourCharWords.add(word);
+      }
+    }
+
+    results.validTwoCharWords = Array.from(twoCharWords).sort();
+    results.validThreeCharWords = Array.from(threeCharWords).sort();
+    results.validFourCharWords = Array.from(fourCharWords).sort();
+    results.totalValidWords = twoCharWords.size + threeCharWords.size + fourCharWords.size;
+
+    // Calculate coverage - what percentage of characters are part of valid words
+    const charPositionsInWords = new Set();
+    for (const word of twoCharWords) {
+      for (let i = 0; i < characters.length - 1; i++) {
+        if (characters[i] + characters[i + 1] === word) {
+          charPositionsInWords.add(i);
+          charPositionsInWords.add(i + 1);
+        }
+      }
+    }
+    for (const word of threeCharWords) {
+      for (let i = 0; i < characters.length - 2; i++) {
+        if (characters[i] + characters[i + 1] + characters[i + 2] === word) {
+          charPositionsInWords.add(i);
+          charPositionsInWords.add(i + 1);
+          charPositionsInWords.add(i + 2);
+        }
+      }
+    }
+    for (const word of fourCharWords) {
+      for (let i = 0; i < characters.length - 3; i++) {
+        if (characters[i] + characters[i + 1] + characters[i + 2] + characters[i + 3] === word) {
+          charPositionsInWords.add(i);
+          charPositionsInWords.add(i + 1);
+          charPositionsInWords.add(i + 2);
+          charPositionsInWords.add(i + 3);
+        }
+      }
+    }
+
+    results.coverage = ((charPositionsInWords.size / characters.length) * 100).toFixed(2);
+
+    return results;
+  }
+
+  // Print results in a formatted table
+  printResults(results, totalChars) {
+    console.log("\n" + "=".repeat(70));
+    console.log("WORD VALIDATION RESULTS");
+    console.log("=".repeat(70) + "\n");
+
+    console.log(`VALID 2-CHARACTER WORDS (${results.validTwoCharWords.length} found):`);
+    console.log("-".repeat(70));
+    if (results.validTwoCharWords.length > 0) {
+      results.validTwoCharWords.forEach((word, idx) => {
+        console.log(`${(idx + 1).toString().padStart(4)}. ${word} (U+${word.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}${word.length > 1 ? ` U+${word.charCodeAt(1).toString(16).toUpperCase().padStart(4, "0")}` : ""})`);
+      });
+    } else {
+      console.log("None found");
+    }
+
+    console.log(`\nVALID 3-CHARACTER WORDS (${results.validThreeCharWords?.length || 0} found):`);
+    console.log("-".repeat(70));
+    if (results.validThreeCharWords?.length > 0) {
+      results.validThreeCharWords.forEach((word, idx) => {
+        console.log(`${(idx + 1).toString().padStart(4)}. ${word} (U+${word.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}${word.length > 2 ? ` U+${word.charCodeAt(2).toString(16).toUpperCase().padStart(4, "0")}` : ""})`);
+      });
+    } else {
+      console.log("None found");
+    }
+
+    console.log(`\nVALID 4-CHARACTER WORDS (${results.validFourCharWords?.length || 0} found):`);
+    console.log("-".repeat(70));
+    if (results.validFourCharWords?.length > 0) {
+      results.validFourCharWords.forEach((word, idx) => {
+        console.log(`${(idx + 1).toString().padStart(4)}. ${word} (U+${word.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0")}${word.length > 3 ? ` U+${word.charCodeAt(3).toString(16).toUpperCase().padStart(4, "0")}` : ""})`);
+      });
+    } else {
+      console.log("None found");
+    }
+
+    console.log("\n" + "=".repeat(80));
+    console.log(`SUMMARY:`);
+    console.log(`  Total characters analyzed: ${totalChars}`);
+    console.log(`  Dictionary size: ${this.wordList.length} words`);
+    console.log(`  Valid 2-char words found: ${results.validTwoCharWords.length}`);
+    console.log(`  Valid 3-char words found: ${results.validThreeCharWords?.length || 0}`);
+    console.log(`  Valid 4-char words found: ${results.validFourCharWords?.length || 0}`);
+    console.log(`  Total unique valid words: ${results.totalValidWords}`);
+    console.log(`  Character coverage: ${results.coverage}%`);
+    console.log("=".repeat(80) + "\n");
+  }
+
+  // Save results to JSON file
+  saveResults(results, filename = "word-validation-results.json") {
+    const output = {
+      timestamp: new Date().toISOString(),
+      dictionarySize: this.wordList.length,
+      results,
+    };
+
+    fs.writeFileSync(filename, JSON.stringify(output, null, 2));
+    console.log(`Results saved to ${filename}`);
+  }
+}
+
 // Parse command-line arguments
 function parseArguments() {
   const args = process.argv.slice(2);
@@ -330,7 +496,7 @@ function parseArguments() {
 
   return {
     mode,
-    validModes: ["common", "extended", "all"],
+    validModes: ["common", "extended", "all", "words"],
   };
 }
 
@@ -343,23 +509,29 @@ function printUsage() {
 
 Run with different modes:
 
-  npm start                    - Test ~60 common characters
-  npm start -- common          - Test ~60 common characters
-  npm start -- extended        - Test ~2000 characters
-  npm start -- all             - Test ALL ~20,000 characters
+  npm start                    - Test ~60 common characters (symmetry)
+  npm start -- common          - Test ~60 common characters (symmetry)
+  npm start -- extended        - Test ~2000 characters (symmetry)
+  npm start -- all             - Test ALL ~20,000 characters (symmetry)
+  npm start -- words           - Validate words from dictionary (2000 chars)
+  npm start -- words [N]       - Validate words from dictionary (N chars)
 
 Examples:
   node main.js common
   node main.js extended
   node main.js all
+  node main.js words
+  node main.js words 5000
 
 Output files:
-  symmetry-results.json       - Detailed JSON results
+  symmetry-results.json        - Detailed JSON results (symmetry mode)
+  word-validation-results.json - Detailed JSON results (words mode)
 
 Performance estimates:
   common:    about 60 chars
   extended:  about 2,000 chars
   all:       about 20,000 chars
+  words:     validates against dictionary
 `);
 }
 
@@ -373,6 +545,55 @@ async function main() {
       console.log(`Valid modes: ${validModes.join(", ")}`);
       printUsage();
       process.exit(1);
+    }
+
+    // Handle word validation mode
+    if (mode === "words") {
+      console.log("\n");
+      console.log("====================================================================");
+      console.log("              Chinese Word Validation - Dictionary Check            ");
+      console.log("        (Find valid consecutive characters in word list)            ");
+      console.log("====================================================================");
+
+      // Load the word list from the JSON file
+      const wordListFile = "chinese_simplified_50k.json";
+      const validator = ChineseWordValidator.loadFromFile(wordListFile);
+
+      if (validator.wordList.length === 0) {
+        console.error("No words loaded. Exiting.");
+        process.exit(1);
+      }
+
+      // Check if a number was provided as second argument
+      const numChars = parseInt(process.argv[3]) || 2000;
+
+      // Generate consecutive Unicode characters (CJK Unified Ideographs)
+      const start = 0x4e00;
+      const end = start + numChars - 1;
+      const characters = [];
+
+      for (let i = start; i <= end; i++) {
+        characters.push(String.fromCharCode(i));
+      }
+
+      console.log(`\nChecking Unicode range U+${start.toString(16).toUpperCase().padStart(4, "0")} to U+${end.toString(16).toUpperCase().padStart(4, "0")} (${characters.length} characters)`);
+
+      const startTime = Date.now();
+      const results = validator.findValidWords(characters);
+      const elapsedSeconds = ((Date.now() - startTime) / 1000).toFixed(2);
+
+      console.log(`\nAnalysis complete in ${elapsedSeconds} seconds\n`);
+
+      validator.printResults(results, characters.length);
+
+      // Create filename with timestamp
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `word-validation-results-${numChars}-${timestamp}.json`;
+
+      validator.saveResults(results, filename);
+
+      printUsage();
+      return;
     }
 
     console.log("\n");
